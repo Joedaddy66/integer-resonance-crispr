@@ -1,0 +1,9 @@
+sequence,target_gene,description
+GGCACGAGGGCCTATTTCCCAGG,BRCA1,High-efficiency guide validated in Doench 2016
+GCACTGAGATCTAGTCGATAAGG,TP53,Medium-efficiency guide
+ATATATATATATATATATATAGGG,TEST1,Low-complexity sequence (should score low)
+GGGGGGGGGGGGGGGGGGGGAGG,TEST2,Homopolymer run (should have low specificity)
+GCGATCGTAGCTAGCTAGCTGGG,MYC,Balanced GC content guide
+TTTTAAAAATTTTTAAAAAAAGG,TEST3,AT-rich sequence
+CGGCGCGCGCGCGCGCGCGCAGG,TEST4,GC-rich sequence
+ACTGACTGACTGACTGACTGAGG,KRAS,Repetitive pattern guide

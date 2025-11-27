@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run smoke test (single sequence)
+      run: |
+        python analyze.py --sequence GGCACGAGGGCCTATTTCCCAGG
+
+    - name: Run smoke test (batch analysis)
+      run: |
+        python analyze.py --input test_smoke.csv --output test_results.csv
+
+    - name: Verify output file created
+      run: |
+        if [ ! -f test_results.csv ]; then
+          echo "Error: test_results.csv not created"
+          exit 1
+        fi
+        echo "✓ Output file created successfully"
+
+    - name: Check output contains expected columns
+      run: |
+        python -c "
+        import pandas as pd
+        df = pd.read_csv('test_results.csv')
+        required_cols = {'sequence', 'int_resonance_score', 'efficiency_prediction', 'specificity_score'}
+        actual_cols = set(df.columns)
+        if not required_cols.issubset(actual_cols):
+          print(f'Missing columns: {required_cols - actual_cols}')
+          exit(1)
+        print('✓ All required columns present')
+        print(f'✓ Analyzed {len(df)} sequences')
+        "
+
+    - name: Display results summary
+      run: |
+        python -c "
+        import pandas as pd
+        df = pd.read_csv('test_results.csv')
+        print('\n=== Smoke Test Results ===')
+        print(f'Total sequences: {len(df)}')
+        print(f'Valid results: {df[\"int_resonance_score\"].notna().sum()}')
+        print(f'Score range: {df[\"int_resonance_score\"].min():.0f} - {df[\"int_resonance_score\"].max():.0f}')
+        print(f'\nEfficiency distribution:')
+        print(df[\"efficiency_prediction\"].value_counts())
+        print('\n✓ Smoke test passed!')
+        "
+
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black
+
+    - name: Run flake8
+      run: |
+        # Stop on serious errors, warnings are ok
+        flake8 analyze.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Full check (warning only)
+        flake8 analyze.py --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff analyze.py || echo "Note: Code formatting differences found (non-blocking)"
